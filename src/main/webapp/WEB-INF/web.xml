@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+                             http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	version="2.5" xmlns="http://java.sun.com/xml/ns/javaee">
+
+	<display-name>ConnectivityProxy</display-name>
+
+	<!-- ============================================================== -->
+	<!-- Connectivity Proxy servlet  -->
+	<!-- ============================================================== -->
+
+	<servlet>
+		<display-name>ConnectivityProxy</display-name>
+		<servlet-name>ConnectivityProxy</servlet-name>
+		<servlet-class>com.sap.cloudlabs.connectivity.proxy.ProxyServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>ConnectivityProxy</servlet-name>
+		<url-pattern>/proxy/*</url-pattern>
+	</servlet-mapping>
+
+	<!-- ============================================================== -->
+	<!-- JNDI resource definition of DestinationFactory -->
+	<!-- ============================================================== -->
+
+	<resource-ref>
+		<res-ref-name>connectivity/DestinationFactory</res-ref-name>
+		<res-type>com.sap.core.connectivity.api.DestinationFactory</res-type>
+	</resource-ref>
+
+	<!-- ============================================================== -->
+	<!-- Welcome file list -->
+	<!-- ============================================================== -->
+
+	<welcome-file-list>
+		<welcome-file>index.html</welcome-file>
+	</welcome-file-list>
+
+
+</web-app>
