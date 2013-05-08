@@ -11,7 +11,7 @@ details on the SAP HANA Cloud connectivity service.
 Quick Start
 -----------
 
-Clone the repository 'https://sap.github.io/sap/cloud-connectivity.proxy.git' or [download the latest release](https://sap.github.io/sap/cloud-connectivity.proxy/zipball/master). 
+Clone the repository 'https://sap.github.io/sap/cloud-connectivityproxy.git' or [download the latest release](https://sap.github.io/sap/cloud-connectivityproxy/zipball/master). 
 
 To build the project locally using Maven, you need to adopt the pom.xml file of the component as following: 
 - Define the <nw.cloud.sdk.version> variable: it specifies the version of your locally used SAP HANA Cloud SDK; if you are not sure about the concrete version of your SDK, open the sdk.version file the root directory of the SDK and copy the value of the release.version property.
@@ -96,6 +96,7 @@ Authors
 -------
 
 **Timo Lakner**
+
 **Nace Sapundziev**
 
 + http://twitter.com/tlakner
