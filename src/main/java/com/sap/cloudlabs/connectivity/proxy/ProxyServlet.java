@@ -115,26 +115,30 @@ public class ProxyServlet extends HttpServlet {
 	
 		// get the http client for the destination
 		HttpDestination dest = getDestination(destinationName);	
-		HttpClient httpClient;
+		HttpClient httpClient = null;
 		try {
 			httpClient = dest.createHttpClient();
+		
+			// create request to targeted backend service
+			HttpRequestBase backendRequest = getBackendRequest(request, urlToService);
+	
+			// execute the backend request
+			HttpResponse backendResponse = httpClient.execute(backendRequest);
+	
+			String rewriteUrl = getDestinationUrl(dest);  
+			String proxyUrl = getProxyUrl(request, destinationName);
+						
+			// process response from backend request and pipe it to origin response of client
+			processBackendResponse(request, response, backendResponse, proxyUrl, rewriteUrl);
 		} catch (DestinationException e) {
 			throw new ServletException(e);
-		}
-		
-		// create request to targeted backend service
-		HttpRequestBase backendRequest = getBackendRequest(request, urlToService);
-
-		// execute the backend request
-		HttpResponse backendResponse = httpClient.execute(backendRequest);
-
-		String rewriteUrl = getDestinationUrl(dest);  
-		String proxyUrl = getProxyUrl(request, destinationName);
-					
-		// process response from backend request and pipe it to origin response of client
-		processBackendResponse(request, response, backendResponse, proxyUrl, rewriteUrl);
-		
-		LOGGER.debug(">>>>>>>>>>>> end request");
+		} finally {
+			if (httpClient != null) {
+				httpClient.getConnectionManager().shutdown();
+			}
+			
+			LOGGER.debug(">>>>>>>>>>>> end request");			
+		}		
 	}
 
 	
