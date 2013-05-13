@@ -133,7 +133,7 @@ public class ProxyServlet extends HttpServlet {
 		} catch (DestinationException e) {
 			throw new ServletException(e);
 		} finally {
-			if (httpClient != null) {
+			if (httpClient != null) { 
 				httpClient.getConnectionManager().shutdown();
 			}
 			
