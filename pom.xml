@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.sap.cloudlabs.connectivity</groupId>
   <artifactId>connectivity.proxy</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.1.0</version>
   <packaging>war</packaging>
   <name>Connectivity Proxy</name>
   <description>Serves as proxy between SAP HANA Cloud clients and backend systems</description>
