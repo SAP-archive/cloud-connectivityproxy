@@ -24,9 +24,12 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
@@ -53,6 +56,7 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sap.cloudlabs.connectivity.proxy.SecurityHandler;
 import com.sap.core.connectivity.api.DestinationException;
 import com.sap.core.connectivity.api.DestinationFactory;
 import com.sap.core.connectivity.api.http.HttpDestination;
@@ -66,7 +70,7 @@ import com.sap.core.connectivity.api.http.HttpDestination;
  * The name of the destination has to be passed by the calling client of this servlet 
  * as part of the URL, following this pattern: 
  * <pre>
- *   /<context-path>/<servlet-path>/<destination>/<relative-path-to-backend-service>
+ *   /<context-path>/<servlet-path>/<destinationName>/<relative-path-to-backend-service>
  * </pre> 
  * <p>
  * Main purpose of the proxy servlet is to assure the same-origin-policy (SOP)
@@ -74,24 +78,75 @@ import com.sap.core.connectivity.api.http.HttpDestination;
  * 
  * @version 0.1
  */
+
+/*
+ * In case you want to manage servlet urlPatterns and security constraints 
+ * with annotations you can replace web.xml file entries for urlPatterns and security constraints
+ * <code><servlet-mapping>
+ *			<servlet-name>ConnectivityProxy</servlet-name>
+ *			<url-pattern>/proxy/yourDestinationName1/*</url-pattern>
+ *			<url-pattern>/proxy/yourDestinationName2/*</url-pattern>
+ *		</servlet-mapping>
+ * </code>
+ * with: 
+ * <code>@WebServlet(name="ConnectivityProxy", urlPatterns={"/proxy/yourDestinationName1", "/proxy/yourDestinationName2"})
+ * @ServletSecurity(@HttpConstraint(rolesAllowed = {"Administrator"}))
+ * </code>
+ */
+
 public class ProxyServlet extends HttpServlet {
+	private static final String ISO_8859_1 = "ISO-8859-1";
+
 	private static final long serialVersionUID = 1L;
 
-	/** headers which will be blocked from forwarding in backend request */
-	private static String[] BLOCKED_REQUEST_HEADERS = { "host", "content-length" };
+	/* headers which will be blocked from forwarding in backend request */
+	private static String[] BLOCKED_REQUEST_HEADERS = { "host", "content-length", "SAP_SESSIONID_DT1_100", "MYSAPSSO2", "JSESSIONID" };
 		
-	/** buffer size for piping the content */
+	/* buffer size for piping the content */
 	private static final int IO_BUFFER_SIZE = 4 * 1024;
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ProxyServlet.class);
-		
+	
+	/*
+	 * In case you want to manage servlet resources  
+	 * with annotations you can replace web.xml  declaration
+	 * <code> <resource-ref>
+	 *	<res-ref-name>connectivity/DestinationFactory</res-ref-name>
+	 *	<res-type>com.sap.core.connectivity.api.DestinationFactory</res-type>
+	 *	</resource-ref> 
+	 * </code>
+	 * file with following annotations
+	 * <code>	@Resource com.sap.core.connectivity.api.DestinationFactory destinationFactory;</code>		
+	 * Then the destinationFactory declaration is obsolete, 
+	 * as well as the lookup in method <code>getDestination(String)</code>
+	 */
 	private static DestinationFactory destinationFactory;
+	
+	private SecurityHandler securityHandler;
 	
 	/*
 	 * @see javax.servlet.GenericServlet#init(javax.servlet.ServletConfig)
 	 */
 	public void init(ServletConfig servletConfig) throws ServletException {
 		super.init(servletConfig);
+		String securityHandlerName = servletConfig.getInitParameter("security.handler");
+		try {
+			Class<?> clazz = Class.forName(securityHandlerName);
+			
+		if (SecurityHandler.class.isAssignableFrom(clazz)) {
+			securityHandler = (SecurityHandler) clazz.newInstance();
+		} else {
+				LOGGER.debug("Provided security.handler " + securityHandlerName + " is not an implementation of SecurityHandler class: ");
+			}
+		// no exception will be thrown as the proxy servlet can work without security handler implementation
+		} catch (ClassNotFoundException e) {
+			LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be loaded");
+
+		} catch (InstantiationException e) {
+			LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be instantioated");
+		} catch (IllegalAccessException e) {
+			LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be accessed");
+		}
 	}
 
 	protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException,
@@ -99,18 +154,20 @@ public class ProxyServlet extends HttpServlet {
 
 		LOGGER.debug(">>>>>>>>>>>> start request");
 		
+		// read destination and relative service path from URL
+		String queryString = request.getQueryString();
+		String destinationName = getDestinationFromUrl(request.getServletPath());
+		String pathInfo = null;
+		
 		int contextPathLength = request.getContextPath().length();
 		int servletPathLength = request.getServletPath().length();
 		
-		// read destination and relative service path from URL
-		if (request.getRequestURI().indexOf(request.getContextPath() + request.getServletPath() + "/") == -1) {
-			throw new ServletException(writeMessage("no destination specified"));
+		if (request.getRequestURI().endsWith(destinationName)) { 
+			pathInfo = "";
+		} else {
+			pathInfo = request.getRequestURI().substring(servletPathLength + contextPathLength);
+			
 		}
-		
-		String pathInfo = request.getRequestURI().substring(
-				contextPathLength + servletPathLength + 1);
-		String queryString = request.getQueryString();
-		String destinationName = getDestinationFromUrl(pathInfo);
 		String urlToService = getRelativePathFromUrl(pathInfo, queryString);
 	
 		// get the http client for the destination
@@ -120,16 +177,16 @@ public class ProxyServlet extends HttpServlet {
 			httpClient = dest.createHttpClient();
 		
 			// create request to targeted backend service
-			HttpRequestBase backendRequest = getBackendRequest(request, urlToService);
-	
-			// execute the backend request
-			HttpResponse backendResponse = httpClient.execute(backendRequest);
-	
-			String rewriteUrl = getDestinationUrl(dest);  
-			String proxyUrl = getProxyUrl(request, destinationName);
-						
-			// process response from backend request and pipe it to origin response of client
-			processBackendResponse(request, response, backendResponse, proxyUrl, rewriteUrl);
+		HttpRequestBase backendRequest = getBackendRequest(request, urlToService);
+
+		// execute the backend request
+		HttpResponse backendResponse = httpClient.execute(backendRequest);
+
+		String rewriteUrl = getDestinationUrl(dest);  
+		String proxyUrl = getProxyUrl(request);
+					
+		// process response from backend request and pipe it to origin response of client
+		processBackendResponse(request, response, backendResponse, proxyUrl, rewriteUrl);
 		} catch (DestinationException e) {
 			throw new ServletException(e);
 		} finally {
@@ -160,12 +217,11 @@ public class ProxyServlet extends HttpServlet {
 	/**
 	 * Returns the URL to the proxy servlet and used destination. 
 	 */
-	private String getProxyUrl(HttpServletRequest request, String destinationName) throws MalformedURLException {
+	private String getProxyUrl(HttpServletRequest request) throws MalformedURLException {
  		URL url = new URL(request.getRequestURL().toString());
 		String proxyUrl = 
 				request.getScheme() + "://" + url.getAuthority() + 
-				request.getContextPath() + request.getServletPath() + 
-				'/' + destinationName;
+				request.getContextPath() + request.getServletPath();
 		return proxyUrl; 
 	}
 	
@@ -226,7 +282,7 @@ public class ProxyServlet extends HttpServlet {
 			// determine charset and content as String
 			String charset = EntityUtils.getContentCharSet(entity);
 			String content = EntityUtils.toString(entity); 
-			
+				
 			LOGGER.debug("URL rewriting:"); 
 			LOGGER.debug("    => rewriteUrl: " + rewriteUrl);
 			LOGGER.debug("    => proxyUrl: " + proxyUrl);
@@ -235,7 +291,7 @@ public class ProxyServlet extends HttpServlet {
 			content = content.replaceAll(rewriteUrl, proxyUrl); 
 			
 			// get the bytes and open a stream (by default HttpClient uses ISO-8859-1)
-		    byte[] contentBytes = charset != null ? content.getBytes(charset) : content.getBytes("ISO-8859-1");
+		    byte[] contentBytes = charset != null ? content.getBytes(charset) : content.getBytes(ISO_8859_1);
 			InputStream is = new ByteArrayInputStream(contentBytes);
 		    
 			// set the new content length
@@ -292,7 +348,22 @@ public class ProxyServlet extends HttpServlet {
 		// copy headers from Web application request to backend request, while
 		// filtering the blocked headers
 		List<String> blockedHeaders = Arrays.asList(BLOCKED_REQUEST_HEADERS);
-		LOGGER.debug("request headers:");
+		
+		
+		LOGGER.debug("backend request headers:");
+
+		blockedHeaders = mergeLists(securityHandler, blockedHeaders);
+		
+		Enumeration<String> setCookieHeaders = request.getHeaders("Cookie");
+		while(setCookieHeaders.hasMoreElements()) {
+			String cookieHeader = setCookieHeaders.nextElement();
+			if (blockedHeaders.contains(cookieHeader.toLowerCase())) {
+				String replacedCookie = removeJSessionID(cookieHeader);
+				backendRequest.addHeader("Cookie", replacedCookie);
+			}
+			LOGGER.debug("Cookie header => " + cookieHeader);
+		}
+		
 		for (Enumeration<String> e = request.getHeaderNames(); e.hasMoreElements();) {
 			String headerName = e.nextElement().toString();
 			if (!blockedHeaders.contains(headerName.toLowerCase())) {
@@ -305,12 +376,32 @@ public class ProxyServlet extends HttpServlet {
 
 		return backendRequest;
 	}
+	
+	private String removeJSessionID(String cookieHeader) {
+		int beginIndex = cookieHeader.indexOf("JSESSIONID");
+		int endIndex = cookieHeader.indexOf(";", beginIndex+ 12);
+		String jSeesionSubstring = cookieHeader.substring(beginIndex, endIndex);
+		String result  = cookieHeader.replace(jSeesionSubstring +";", "");
+		return result;
+	}
+	
+	private List<String> mergeLists(SecurityHandler securityHandler, List<String> blockedHeaders) {
+		List<String> applicationBlackList = securityHandler.getResponseHeadersBlackList();
+		
+		applicationBlackList.removeAll(blockedHeaders);
+		applicationBlackList.addAll(blockedHeaders);
+		
+		return applicationBlackList;
+	}
 
 	/**
 	 * Returns an initialized HttpClient which points to the specified destination. 	 
 	 */
 	private HttpDestination getDestination(String destinationName) throws ServletException {
 		try {
+			/*
+			 * In case the an annotation @Resource is used, the following if block is obsolete
+			 */
 			if (destinationFactory == null) {			
 				Context ctx = new InitialContext();
 				destinationFactory = (DestinationFactory) ctx.lookup(DestinationFactory.JNDI_NAME);
@@ -329,21 +420,20 @@ public class ProxyServlet extends HttpServlet {
 	 *  <destinationName>/relativePathToService
 	 * </pre>
 	 */
-	private String getDestinationFromUrl(String path) throws ServletException {
-		String destinationName = "";
-		int index = path.indexOf("/");
-		if (index != -1) {
-			destinationName = path.substring(0, index);
-		} else if (path != null && !path.isEmpty()) {
-			destinationName = path;
-		}
-		if ("".equals(destinationName) || destinationName == null) {
-			throw new ServletException(writeMessage("no destination specified"));
-		}
-		LOGGER.debug("destination read from URL path: " + destinationName);
-		return destinationName;
-	}
+	  private String getDestinationFromUrl(String servletPath) throws ServletException {
+	        String destinationName = null;
+	        int index = servletPath.lastIndexOf("/");
+	        if (index != -1) {
+	        	destinationName = servletPath.substring(index + 1, servletPath.length());
+	        }
+	        if (destinationName == null) {
+	        	throw new ServletException(writeMessage("No destination specified"));
+	        }
+	        LOGGER.debug("destination read from URL path: " + destinationName);
+	        return destinationName;
+	  }
 	
+	  
 	/**
 	 * Returns the relative path to the backend service. It assumes that the specified path is
 	 * <pre>
@@ -370,9 +460,9 @@ public class ProxyServlet extends HttpServlet {
 	private void handleContentEncoding(HttpResponse response) throws ServletException {
 		HttpEntity entity = response.getEntity();
 		if (entity != null) {
-			Header ceheader = entity.getContentEncoding();
-			if (ceheader != null) {
-				HeaderElement[] codecs = ceheader.getElements();
+			Header contentEncodingHeader = entity.getContentEncoding();
+			if (contentEncodingHeader != null) {
+				HeaderElement[] codecs = contentEncodingHeader.getElements();
 				LOGGER.debug("Content-Encoding in response:");
 				for (HeaderElement codec : codecs) {
 					String codecname = codec.getName().toLowerCase();
@@ -409,8 +499,11 @@ public class ProxyServlet extends HttpServlet {
 		while ((read = in.read(b)) != -1) {
 			out.write(b, 0, read);
 		}
+		in.close();
 		out.flush();
+		out.close();
 	}
+	
 
 	private String writeMessage(String message) {
 		StringBuilder b = new StringBuilder();

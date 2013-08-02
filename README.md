@@ -39,13 +39,15 @@ To use the Connectivity Proxy, you need to
 
 1. Download the Connectivity Proxy from github and build it in your local environment. The github project is 
    prepared for Maven builds, and a "mvn install" generates a WAR file containing the proxy servlet in the projects "/target" folder. 
-   The servlet-path for the proxy servlet specified in the project is "/proxy". If you like to change this path, go into the 
+   The servlet-path for the proxy servlet specified in the project is "/proxy/yourDestinationName1". If you like to change this path, go into the 
    "src/main/webapp/WEB-INF" folder of the project and change the url-pattern for the "ConnectivityProxy". 
+   The servlet mapping <url-pattern> should be edited by the user with the destination/s which the application will use.
+   Initially specified destination name  is not valid i.e. <url-pattern>/proxy/yourDestinationName1</url-pattern>
 
 2. Deploy the WAR file containing the Connectivity Proxy in the SAP HANA Cloud application where you want to use it. 
    See https://help.hana.ondemand.com/help/frameset.htm?030863cd5d0d4dd3b742957970f8eec9.html for more details on how to 
    deploy multiple WAR files for a single application. After deployment, you are able to call the proxy servlet 
-   via "/<application-name>/proxy".
+   via "/<application-name>/proxy/yourDestinationName".
   
 Option B: Copy the ProxyServlet into your Web application project
   
@@ -62,10 +64,19 @@ define the DestinationFactory as a JNDI resource:
 		<servlet-name>ConnectivityProxy</servlet-name>
 		<servlet-class>com.sap.cloudlabs.connectivity.proxy.ProxyServlet</servlet-class>
 	</servlet>
+	
+	<!-- ============================================================== -->
+	<!-- Replace yourDestinationName1 with real destination name  -->
+	<!-- Add additional <url-pattern> for more destinations  -->
+	<!-- ============================================================== -->
+	
 	<servlet-mapping>
 		<servlet-name>ConnectivityProxy</servlet-name>
-		<url-pattern>/proxy/*</url-pattern>
+		<url-pattern>/proxy/yourDestinationName1/*</url-pattern>
+		<url-pattern>/proxy/yourDestinationName2/*</url-pattern>
+
 	</servlet-mapping>
+		
 
 	<!-- ============================================================== -->
 	<!-- JNDI resource definition of DestinationFactory -->
@@ -75,7 +86,42 @@ define the DestinationFactory as a JNDI resource:
 		<res-ref-name>connectivity/DestinationFactory</res-ref-name>
 		<res-type>com.sap.core.connectivity.api.DestinationFactory</res-type>
 	</resource-ref>
-  
+
+Security notes
+--------------
+
+1. Restricting with user roles	
+Destination access can be further restricted with roles. You can do this with adding user/roles for your servlet. An example is added as commented code in web.xml
+Replace Administrator with the role you have. The role should be assigned to the user who wants to access the application. This can be done in Hana Cloud Cockpit.
+For more information: https://help.hana.ondemand.com/help/frameset.htm?db8175b9d976101484e6fa303b108acd.html
+     <security-constraint>
+    		<web-resource-collection>
+	        	<web-resource-name>
+					Access to yourDestinationName
+				</web-resource-name>
+	    		<url-pattern>
+		    		/proxy/yourDestinationName/*
+				</url-pattern>
+    		</web-resource-collection>
+	    	<auth-constraint>
+	        	<role-name>Administrator</role-name>
+    		</auth-constraint>
+	</security-constraint>
+	
+2. Blacklisting of Headers.
+Not all response headers from the backend should be forwarded to the JavaScript client. Therefore we have a static list of headers which will be not forwarded:
+"host", "content-length", "SAP_SESSIONID_DT1_100", "MYSAPSSO2", "JSESSIONID"
+
+If the a user of the proxy servlet wants to add additional headers she/he should add an implementation of abstract class SecurityHandler.
+And declare its name as servlet init-param:
+<init-param>
+            <param-name>security.handler</param-name>
+            <param-value>com.sap.cloudlabs.connectivity.proxy.DefaultSecurityHandler</param-value>
+</init-param>
+
+3. Users should take in mind that destination endpoint shall be trusted by the application and by the application end-users 
+(ProxyServlet can get access to file system, credentials, sensitive cookies, execute HTTP requests on behalf of the user, etc.)	
+
 
 Versioning 
 ----------
@@ -101,8 +147,12 @@ Authors
 
 **Nace Sapundziev**
 
+**Rositza Andreeva**
+
 + http://twitter.com/tlakner
 + http://github.com/tlakner
++ http://github.com/sapundziev
++ http://twitter.com/sapunce
 
 
 Copyright and license

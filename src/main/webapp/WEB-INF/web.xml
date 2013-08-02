@@ -8,18 +8,49 @@
 
 	<!-- ============================================================== -->
 	<!-- Connectivity Proxy servlet  -->
+	<!-- Specify name of SecurityHandler implementation as <init-param>  -->
+	<!-- if such is available  -->
 	<!-- ============================================================== -->
 
 	<servlet>
 		<display-name>ConnectivityProxy</display-name>
 		<servlet-name>ConnectivityProxy</servlet-name>
 		<servlet-class>com.sap.cloudlabs.connectivity.proxy.ProxyServlet</servlet-class>
+		<!-- <init-param>
+            <param-name>security.handler</param-name>
+            <param-value>yourSecurityHandlerImplementation</param-value>
+        </init-param> -->
 	</servlet>
 	<servlet-mapping>
-		<servlet-name>ConnectivityProxy</servlet-name>
-		<url-pattern>/proxy/*</url-pattern>
+			<servlet-name>ConnectivityProxy</servlet-name>
+		
+		<!-- ============================================================== -->
+		<!-- Replace yourDestinationName1 with real destination name  -->
+		<!-- Add additional <url-pattern> for more destinations  -->
+		<!-- ============================================================== -->
+		
+		<url-pattern>/proxy/yourDestinationName1/*</url-pattern>
+		<url-pattern>/proxy/yourDestinationName2/*</url-pattern>
 	</servlet-mapping>
+	
+	<!-- ============================================================== -->
+	<!-- Destination access can be further restricted with roles -->
+	<!-- Replace Administrator with the role you have -->
+	<!-- The role should be assigned to the user who wants to access the application -->
+	<!-- This can be done in Hana Cloud Cockpit -->
+	<!-- Un-comment the following tags -->
+	<!-- ============================================================== -->
 
+	<!--<security-constraint>
+    		<web-resource-collection>
+	        	<web-resource-name>Access to yourDestinationName1</web-resource-name>
+	    	    	<url-pattern>/proxy/yourDestinationName1/*</url-pattern>
+	    		</web-resource-collection>
+	    	<auth-constraint>
+		       	<role-name>Administrator</role-name>
+    		</auth-constraint>
+		</security-constraint>
+	 -->
 	<!-- ============================================================== -->
 	<!-- JNDI resource definition of DestinationFactory -->
 	<!-- ============================================================== -->
