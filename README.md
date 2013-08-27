@@ -46,7 +46,7 @@ To use the Connectivity Proxy, you need to
 2. Deploy the WAR file containing the Connectivity Proxy in the SAP HANA Cloud application where you want to use it. 
    See https://help.hana.ondemand.com/help/frameset.htm?030863cd5d0d4dd3b742957970f8eec9.html for more details on how to 
    deploy multiple WAR files for a single application. After deployment, you are able to call the proxy servlet 
-   via "/<application-name>/proxy/yourDestinationName".
+   via `/application-name/proxy/yourDestinationName`.
   
 Option B: Copy the ProxyServlet into your Web application project
   
@@ -89,40 +89,36 @@ define the DestinationFactory as a JNDI resource:
 Security notes
 --------------
 
-1. Restricting with user roles	
-Destination access can be further restricted with roles. You can do this with adding user/roles for your servlet. An example is added as commented code in web.xml
+1. **Restricting with user roles**
+Destination access can be further restricted with roles. You can do this with adding user/roles for your servlet. 
+An example is added as commented code in web.xml.
+
+
+        <security-constraint>
+	        <web-resource-collection>
+                <web-resource-name>Access to yourDestinationName1</web-resource-name>
+    	    	<url-pattern>/proxy/yourDestinationName1/*</url-pattern>
+    		</web-resource-collection>
+	    	<auth-constraint>
+		       	<role-name>Administrator</role-name>
+    		</auth-constraint>
+        </security-constraint>
 Replace Administrator with the role you have. The role should be assigned to the user who wants to access the application. This can be done in Hana Cloud Cockpit.
 For more information: https://help.hana.ondemand.com/help/frameset.htm?db8175b9d976101484e6fa303b108acd.html
 
- <!-- ============================================================== -->  
-	<security-constraint>
-    		<web-resource-collection>
-	        	<web-resource-name>
-					Access to yourDestinationName
-				</web-resource-name>
-	    		<url-pattern>
-		    		/proxy/yourDestinationName/*
-				</url-pattern>
-    		</web-resource-collection>
-	    	<auth-constraint>
-	        	<role-name>Administrator</role-name>
-    		</auth-constraint>
-	</security-constraint>
-
-2. Blacklisting of Headers.
+2. **Blacklisting of Headers.**
 Not all response headers from the backend should be forwarded to the JavaScript client. Therefore we have a static list of headers which will be not forwarded:
-"host", "content-length", "SAP_SESSIONID_DT1_100", "MYSAPSSO2", "JSESSIONID"
-
+"host", "content-length", "SAP_SESSIONID_DT1_100", "MYSAPSSO2", "JSESSIONID".
 If the user of the proxy servlet wants to add additional headers she/he should add an implementation of abstract class SecurityHandler.
 And declare its name as servlet init-param:
 
- <!-- ============================================================== -->
-	<init-param>
-		<param-name>security.handler</param-name>
-		<param-value>com.sap.cloudlabs.connectivity.proxy.MySecurityHandler</param-value>
-	</init-param>
 
-3. Users should take in mind that destination endpoint shall be trusted by the application and by the application end-users 
+        <init-param>
+	        <param-name>security.handler</param-name>
+	        <param-value>com.sap.cloudlabs.connectivity.proxy.MySecurityHandler</param-value>
+        </init-param>
+
+Users should take in mind that destination endpoint shall be trusted by the application and by the application end-users 
 (ProxyServlet can get access to file system, credentials, sensitive cookies, execute HTTP requests on behalf of the user, etc.)	
 
 
