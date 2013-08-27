@@ -112,11 +112,12 @@ For more information: https://help.hana.ondemand.com/help/frameset.htm?db8175b9d
 Not all response headers from the backend should be forwarded to the JavaScript client. Therefore we have a static list of headers which will be not forwarded:
 "host", "content-length", "SAP_SESSIONID_DT1_100", "MYSAPSSO2", "JSESSIONID"
 
-If the a user of the proxy servlet wants to add additional headers she/he should add an implementation of abstract class SecurityHandler.
+If the user of the proxy servlet wants to add additional headers she/he should add an implementation of abstract class SecurityHandler.
 And declare its name as servlet init-param:
+
 <init-param>
             <param-name>security.handler</param-name>
-            <param-value>com.sap.cloudlabs.connectivity.proxy.DefaultSecurityHandler</param-value>
+            <param-value>com.sap.cloudlabs.connectivity.proxy.<MySecurityHandler></param-value>
 </init-param>
 
 3. Users should take in mind that destination endpoint shall be trusted by the application and by the application end-users 

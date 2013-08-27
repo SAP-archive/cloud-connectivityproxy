@@ -24,8 +24,8 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -130,22 +130,25 @@ public class ProxyServlet extends HttpServlet {
 	public void init(ServletConfig servletConfig) throws ServletException {
 		super.init(servletConfig);
 		String securityHandlerName = servletConfig.getInitParameter("security.handler");
-		try {
-			Class<?> clazz = Class.forName(securityHandlerName);
-			
-		if (SecurityHandler.class.isAssignableFrom(clazz)) {
-			securityHandler = (SecurityHandler) clazz.newInstance();
-		} else {
-				LOGGER.debug("Provided security.handler " + securityHandlerName + " is not an implementation of SecurityHandler class: ");
+		
+		if (securityHandlerName != null) {
+			try {
+				Class<?> clazz = Class.forName(securityHandlerName);
+				
+				if (SecurityHandler.class.isAssignableFrom(clazz)) {
+					securityHandler = (SecurityHandler) clazz.newInstance();
+				} else {
+					LOGGER.debug("Provided security.handler " + securityHandlerName + " is not an implementation of SecurityHandler class: ");
+				}
+			// no exception will be thrown as the proxy servlet can work without security handler implementation
+			} catch (ClassNotFoundException e) {
+				LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be loaded");
+	
+			} catch (InstantiationException e) {
+				LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be instantioated");
+			} catch (IllegalAccessException e) {
+				LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be accessed");
 			}
-		// no exception will be thrown as the proxy servlet can work without security handler implementation
-		} catch (ClassNotFoundException e) {
-			LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be loaded");
-
-		} catch (InstantiationException e) {
-			LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be instantioated");
-		} catch (IllegalAccessException e) {
-			LOGGER.error("Provided security.handler " + securityHandlerName + " cannot be accessed");
 		}
 	}
 
@@ -347,12 +350,10 @@ public class ProxyServlet extends HttpServlet {
 
 		// copy headers from Web application request to backend request, while
 		// filtering the blocked headers
-		List<String> blockedHeaders = Arrays.asList(BLOCKED_REQUEST_HEADERS);
-		
 		
 		LOGGER.debug("backend request headers:");
 
-		blockedHeaders = mergeLists(securityHandler, blockedHeaders);
+		Collection<String> blockedHeaders = mergeLists(securityHandler, Arrays.asList(BLOCKED_REQUEST_HEADERS));
 		
 		Enumeration<String> setCookieHeaders = request.getHeaders("Cookie");
 		while(setCookieHeaders.hasMoreElements()) {
@@ -385,13 +386,15 @@ public class ProxyServlet extends HttpServlet {
 		return result;
 	}
 	
-	private List<String> mergeLists(SecurityHandler securityHandler, List<String> blockedHeaders) {
-		List<String> applicationBlackList = securityHandler.getResponseHeadersBlackList();
+	private Collection<String> mergeLists(SecurityHandler securityHandler, List<String> blockedHeaders) {
+		Set<String> mergedHeadersList = new HashSet<String>();
+		mergedHeadersList.addAll(blockedHeaders);
+		if (securityHandler != null) {
+			List<String> applicationBlackList = securityHandler.getResponseHeadersBlackList();
+			mergedHeadersList.addAll(applicationBlackList);
+		}
 		
-		applicationBlackList.removeAll(blockedHeaders);
-		applicationBlackList.addAll(blockedHeaders);
-		
-		return applicationBlackList;
+		return mergedHeadersList;
 	}
 
 	/**
