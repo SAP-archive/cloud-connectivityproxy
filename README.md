@@ -27,8 +27,7 @@ The component consists of a single servlet com.sap.cloudlabs.connectivity.proxy.
 The servlet takes HTTP(S) GWT/PUT/POST/DELETE requests and forwards them to a backend system specified by a configured destination. 
 The concrete destination is defined in the URL path following the subsequent pattern: 
 
-  /\<context-path\>/\<servlet-path\>/\<destination\>/\<relative-path-below-destination\>
-
+`\context-path\servlet-path\destination\relative-path-appended-to-the-destination`
 
 Component Usage
 ---------------
@@ -55,7 +54,7 @@ Alternatively, you can also copy the com.sap.cloudlabs.connectivity.proxy.ProxyS
 application. In this case, you also need to modify the web.xml of your Web application to define the Connectivity Proxy servlet, as well as 
 define the DestinationFactory as a JNDI resource: 
 
-	<!-- ============================================================== -->
+    <!-- ============================================================== -->
 	<!-- Connectivity Proxy servlet  -->
 	<!-- ============================================================== -->
 
@@ -94,7 +93,9 @@ Security notes
 Destination access can be further restricted with roles. You can do this with adding user/roles for your servlet. An example is added as commented code in web.xml
 Replace Administrator with the role you have. The role should be assigned to the user who wants to access the application. This can be done in Hana Cloud Cockpit.
 For more information: https://help.hana.ondemand.com/help/frameset.htm?db8175b9d976101484e6fa303b108acd.html
-     <security-constraint>
+
+ <!-- ============================================================== -->  
+	<security-constraint>
     		<web-resource-collection>
 	        	<web-resource-name>
 					Access to yourDestinationName
@@ -107,7 +108,7 @@ For more information: https://help.hana.ondemand.com/help/frameset.htm?db8175b9d
 	        	<role-name>Administrator</role-name>
     		</auth-constraint>
 	</security-constraint>
-	
+
 2. Blacklisting of Headers.
 Not all response headers from the backend should be forwarded to the JavaScript client. Therefore we have a static list of headers which will be not forwarded:
 "host", "content-length", "SAP_SESSIONID_DT1_100", "MYSAPSSO2", "JSESSIONID"
@@ -115,10 +116,11 @@ Not all response headers from the backend should be forwarded to the JavaScript 
 If the user of the proxy servlet wants to add additional headers she/he should add an implementation of abstract class SecurityHandler.
 And declare its name as servlet init-param:
 
-<init-param>
-            <param-name>security.handler</param-name>
-            <param-value>com.sap.cloudlabs.connectivity.proxy.<MySecurityHandler></param-value>
-</init-param>
+ <!-- ============================================================== -->
+	<init-param>
+		<param-name>security.handler</param-name>
+		<param-value>com.sap.cloudlabs.connectivity.proxy.MySecurityHandler</param-value>
+	</init-param>
 
 3. Users should take in mind that destination endpoint shall be trusted by the application and by the application end-users 
 (ProxyServlet can get access to file system, credentials, sensitive cookies, execute HTTP requests on behalf of the user, etc.)	
