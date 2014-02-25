@@ -100,7 +100,7 @@ public class ProxyServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	/* headers which will be blocked from forwarding in backend request */
-	private static String[] BLOCKED_REQUEST_HEADERS = { "host", "content-length", "SAP_SESSIONID_DT1_100", "MYSAPSSO2", "JSESSIONID" };
+	private static String[] BLOCKED_REQUEST_HEADERS = { "host", "content-length", "sap_sessionid", "mysapsso2", "jsessionid" };
 		
 	/* buffer size for piping the content */
 	private static final int IO_BUFFER_SIZE = 4 * 1024;
@@ -358,10 +358,10 @@ public class ProxyServlet extends HttpServlet {
 		Enumeration<String> setCookieHeaders = request.getHeaders("Cookie");
 		while(setCookieHeaders.hasMoreElements()) {
 			String cookieHeader = setCookieHeaders.nextElement();
-			if (blockedHeaders.contains(cookieHeader.toLowerCase())) {
+			if (blockedHeaders.contains(cookieHeader.toLowerCase()) || cookieHeader.toLowerCase().contains("sap_sessionid")) {
 				String replacedCookie = removeJSessionID(cookieHeader);
 				backendRequest.addHeader("Cookie", replacedCookie);
-			}
+			} 
 			LOGGER.debug("Cookie header => " + cookieHeader);
 		}
 		
@@ -378,12 +378,15 @@ public class ProxyServlet extends HttpServlet {
 		return backendRequest;
 	}
 	
-	private String removeJSessionID(String cookieHeader) {
-		int beginIndex = cookieHeader.indexOf("JSESSIONID");
-		int endIndex = cookieHeader.indexOf(";", beginIndex+ 12);
-		String jSeesionSubstring = cookieHeader.substring(beginIndex, endIndex);
-		String result  = cookieHeader.replace(jSeesionSubstring +";", "");
-		return result;
+	private String removeJSessionID(String cookieHeader) { 
+		if (cookieHeader.contains("JSESSIONID")) {
+			int beginIndex = cookieHeader.indexOf("JSESSIONID");
+			int endIndex = cookieHeader.indexOf(";", beginIndex+ 12);
+			String jSeesionSubstring = cookieHeader.substring(beginIndex, endIndex);
+			String result  = cookieHeader.replace(jSeesionSubstring +";", "");
+			return result;
+		}
+		return cookieHeader;
 	}
 	
 	private Collection<String> mergeLists(SecurityHandler securityHandler, List<String> blockedHeaders) {

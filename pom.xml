@@ -1,13 +1,14 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.sap.cloudlabs.connectivity</groupId>
-  <artifactId>connectivity.proxy</artifactId>
-  <version>0.1.3</version>
-  <packaging>war</packaging>
-  <name>Connectivity Proxy</name>
-  <description>Serves as proxy between SAP HANA Cloud clients and backend systems</description>
-  
-  <organization>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.sap.cloudlabs.connectivity</groupId>
+	<artifactId>connectivity.proxy</artifactId>
+	<version>0.1.4</version>
+	<packaging>war</packaging>
+	<name>Connectivity Proxy</name>
+	<description>Serves as proxy between SAP HANA Cloud clients and backend systems</description>
+
+	<organization>
 		<name>SAP AG</name>
 		<url>http://www.sap.com</url>
 	</organization>
@@ -39,12 +40,19 @@
 	</repositories>
 
 	<properties>
-		<nw.cloud.jdk.version>1.6</nw.cloud.jdk.version>
-		<nw.cloud.sdk.version>1.35.12.4</nw.cloud.sdk.version>
+		<hcp.jdk.version>1.6</hcp.jdk.version>
+		<hcp.sdk.version>1.44.0.1</hcp.sdk.version>
+		<org.apache.cxf.version>2.7.5</org.apache.cxf.version>
+		<org.springframework.version>3.1.2.RELEASE</org.springframework.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<nw.cloud.sdk.path>C:\neo\neo-sdk-javaweb-1.35.12.4</nw.cloud.sdk.path>		
-	</properties>
+		<m2e.jaxrs.activation>false</m2e.jaxrs.activation>
+	</properties>	
+
+	<prerequisites>
+		<maven>3.0.4</maven>
+	</prerequisites>
+	
 
 	<build>
 		<plugins>
@@ -53,8 +61,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.0</version>
 				<configuration>
-					<source>${nw.cloud.jdk.version}</source>
-					<target>${nw.cloud.jdk.version}</target>
+					<source>${hcp.jdk.version}</source>
+					<target>${hcp.jdk.version}</target>
 					<showDeprecation>false</showDeprecation>
 					<showWarnings>false</showWarnings>
 				</configuration>
@@ -79,45 +87,26 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>1.7.2</version>
-			<scope>system</scope>
-			<systemPath>${nw.cloud.sdk.path}/api/slf4j-api-1.7.2.jar</systemPath>
-		</dependency>
-		<dependency>
-			<groupId>com.sap.netweaver.cloud</groupId>
-			<artifactId>neo-sdk-core-api</artifactId>
-			<version>${nw.cloud.sdk.version}</version>
-			<scope>system</scope>
-			<systemPath>${nw.cloud.sdk.path}/api/neo-sdk-core-api-${nw.cloud.sdk.version}.jar</systemPath>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpclient</artifactId>
-			<version>4.1.3</version>
-			<scope>system</scope>
-			<systemPath>${nw.cloud.sdk.path}/api/httpclient-4.1.3.jar</systemPath>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpcore</artifactId>
-			<version>4.1.4</version>
-			<scope>system</scope>
-			<systemPath>${nw.cloud.sdk.path}/api/httpcore-4.1.4.jar</systemPath>
-		</dependency>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.10</version>
-			<scope>test</scope>
+			<version>1.7.5</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
 			<version>3.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sap.cloud</groupId>
+			<artifactId>neo-java-web-api</artifactId>
+			<version>${hcp.sdk.version}</version>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
-  
-  
-  
+
 </project>
